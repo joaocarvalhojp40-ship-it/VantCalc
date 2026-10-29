@@ -18,9 +18,12 @@ jobs:
           java-version: 17
       - name: Montar projeto Android
         run: |
+          ls -la
+          HTML=$(ls *.html 2>/dev/null | head -n 1)
+          if [ -z "$HTML" ]; then echo "ERRO: nenhum arquivo .html no repositorio"; exit 1; fi
           mkdir www
-          cp vantcalc.html www/index.html
-          npm init -y
+          cp "$HTML" www/index.html
+          echo '{"name":"vantcalc","version":"1.0.0"}' > package.json
           npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 lucide@0.263.1
           cp node_modules/lucide/dist/umd/lucide.min.js www/lucide.min.js
           sed -i 's#https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js#lucide.min.js#' www/index.html
