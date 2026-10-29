@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>VantCalc</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#05070d;--ink:#eaf6ff;--mute:#8fa6b8;--blue:#89cff0;--blue2:#5bb4e0;--glass:rgba(137,207,240,.08);--line:rgba(137,207,240,.2);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:'Sora',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:0;background:radial-gradient(60% 40% at 15% 5%,rgba(137,207,240,.28),transparent),radial-gradient(50% 40% at 95% 95%,rgba(91,180,224,.22),transparent)}
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto}
+header{padding:14px 18px 6px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:.3px}
+header span{color:var(--blue)}
+main{flex:1;overflow-y:auto;padding:8px 16px 16px}
+.glass{background:var(--glass);border:1px solid var(--line);border-radius:22px;backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);box-shadow:0 8px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+nav{display:flex;margin:0 12px 10px;padding:6px;gap:2px}
+nav button{flex:1;background:none;border:0;color:var(--mute);padding:8px 0;border-radius:16px;font:600 10px 'Sora',sans-serif;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button.on{background:rgba(137,207,240,.18);color:var(--blue)}
+nav svg{width:20px;height:20px}
+.disp{padding:18px;text-align:right;margin-bottom:12px;min-height:116px;display:flex;flex-direction:column;justify-content:flex-end}
+.expr{color:var(--mute);font-size:16px;min-height:22px;word-break:break-all}
+.res{font-size:44px;font-weight:300;word-break:break-all}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.k{height:62px;border-radius:20px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font:400 22px 'Sora',sans-serif;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.k:active{transform:scale(.95);background:rgba(137,207,240,.25)}
+.k.op{color:var(--blue);font-weight:600}
+.k.eq{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#04121c;font-weight:700;border:0}
+.card{padding:16px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mute);margin:0 0 6px}
+input,select{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--ink);border-radius:14px;padding:13px;font:400 17px 'Sora',sans-serif;outline:none}
+input:focus,select:focus{border-color:var(--blue)}
+.row{display:flex;gap:10px;align-items:flex-end}.row>*{flex:1}
+.btn{border:0;border-radius:16px;padding:14px;font:700 15px 'Sora',sans-serif;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#04121c;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.ghost{background:var(--glass);color:var(--blue);border:1px solid var(--line)}
+.big{font-size:32px;font-weight:600;color:var(--blue);margin:6px 0}
+.vid{position:relative;border-radius:22px;overflow:hidden;background:#000;aspect-ratio:3/4;border:1px solid var(--line)}
+.vid video,.vid canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hint{position:absolute;left:10px;right:10px;top:10px;padding:8px 12px;font-size:13px;border-radius:14px;z-index:2;pointer-events:none}
+.hi{display:flex;justify-content:space-between;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);font-size:14px}
+.hi small{color:var(--mute);display:block}.hi b{color:var(--blue);text-align:right}
+.mute{color:var(--mute);font-size:12px;line-height:1.5}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><i data-lucide="calculator"></i>Vant<span>Calc</span></header>
+  <main id="main"></main>
+  <nav class="glass" id="nav"></nav>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const ic=n=>`<i data-lucide="${n}"></i>`;
+const icons=()=>{try{lucide.createIcons()}catch(e){}};
+const tabs=[['calc','calculator','Calc'],['med','ruler','Medir'],['conv','arrow-left-right','Unidades'],['moeda','coins','Moedas'],['hist','history','Histórico']];
+let tab='calc',stream=null;
+
+/* Histórico local */
+const H={get(){try{return JSON.parse(localStorage.getItem('vc_h')||'[]')}catch(e){return[]}},
+add(t,a,b){try{const l=H.get();l.unshift({t,a,b,d:new Date().toLocaleString('pt-BR')});localStorage.setItem('vc_h',JSON.stringify(l.slice(0,100)))}catch(e){}},
+clear(){try{localStorage.removeItem('vc_h')}catch(e){}}};
+
+/* Navegação */
+$('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}">${ic(t[1])}${t[2]}</button>`).join('');
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.t)};
+function go(t){tab=t;stopCam();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+$('#main').innerHTML='';({calc,med,conv,moeda,hist})[t]();icons();}
+
+/* ---------- Calculadora ---------- */
+function calc(){
+ let ex='';
+ const keys=['C','(',')','÷','7','8','9','×','4','5','6','−','1','2','3','+','⌫','0',',','='];
+ $('#main').innerHTML=`<div class="glass disp"><div class="expr" id="ex"></div><div class="res" id="rs">0</div></div>
+ <div class="keys">${keys.map(k=>`<button class="k ${'÷×−+'.includes(k)||'()%'.includes(k)?'op':''} ${k==='='?'eq':''}">${k}</button>`).join('')}</div>`;
+ const show=()=>{$('#ex').textContent=ex;let r='0';try{const v=ev(ex);if(v!==null)r=fmt(v)}catch(e){}$('#rs').textContent=r};
+ const ev=s=>{if(!s)return null;let j=s.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/,/g,'.').replace(/(\d+(\.\d+)?)%/g,'($1/100)');
+  if(/[^0-9+\-*/().\s]/.test(j))return null;const v=Function('"use strict";return ('+j+')')();return isFinite(v)?v:null};
+ const fmt=v=>String(+v.toPrecision(12)).replace('.',',');
+ document.querySelector('.keys').onclick=e=>{const k=e.target.closest('.k');if(!k)return;const v=k.textContent;
+  if(v==='C')ex='';else if(v==='⌫')ex=ex.slice(0,-1);
+  else if(v==='='){try{const r=ev(ex);if(r!==null){H.add('Calc',ex,fmt(r));ex=fmt(r)}}catch(e){}}
+  else ex+=v;show()};
+ $('#ex').insertAdjacentHTML('afterend','');
+ show();
+}
+
+/* ---------- Medir com a câmera ---------- */
+const REFS={'Cartão de crédito (8,56 cm)':8.56,'Folha A4, lado maior (29,7 cm)':29.7,'Moeda de R$1 (2,7 cm)':2.7,'Régua 15 cm':15,'Outro (digitar)':0};
+function med(){
+ $('#main').innerHTML=`<div class="card glass"><label>Forma de medida (objeto de referência)</label>
+ <select id="ref">${Object.keys(REFS).map(k=>`<option>${k}</option>`).join('')}</select>
+ <div id="cu" style="display:none;margin-top:10px"><label>Tamanho real da referência (cm)</label><input id="cv" type="number" inputmode="decimal" placeholder="ex: 10"></div></div>
+ <div class="vid glass" id="vid"><video id="v" autoplay playsinline muted></video><canvas id="cv2"></canvas><div class="hint glass" id="ht">Iniciando câmera…</div></div>
+ <div class="card glass" style="margin-top:12px"><div class="mute">Resultado</div><div class="big" id="out">—</div><div class="row"><button class="btn ghost" id="rst">${ic('rotate-ccw')}Refazer</button><button class="btn" id="sv">${ic('save')}Salvar</button></div>
+ <p class="mute" style="margin:12px 0 0">Coloque a referência ao lado do objeto, no mesmo plano. 1) Toque nas 2 pontas da referência. 2) Toque no ponto de partida e no final do que quer medir.</p></div>`;
+ const v=$('#v'),c=$('#cv2'),ctx=c.getContext('2d');let pts=[],scale=0,last=null;
+ const sel=$('#ref');sel.onchange=()=>{$('#cu').style.display=sel.value.startsWith('Outro')?'block':'none';reset()};
+ const refCm=()=>REFS[sel.value]||parseFloat($('#cv').value)||0;
+ const msg=t=>$('#ht').textContent=t;
+ function draw(){c.width=c.clientWidth;c.height=c.clientHeight;ctx.clearRect(0,0,c.width,c.height);
+  pts.forEach((p,i)=>{ctx.fillStyle=i<2?'#ffffff':'#89cff0';ctx.beginPath();ctx.arc(p.x,p.y,8,0,7);ctx.fill();
+   if(i%2){const a=pts[i-1];ctx.strokeStyle=i<2?'#fff':'#89cff0';ctx.lineWidth=3;ctx.setLineDash(i<2?[8,6]:[]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(p.x,p.y);ctx.stroke()}})}
+ function reset(){pts=[];scale=0;last=null;$('#out').textContent='—';msg(refCm()?'Toque nas 2 pontas da referência':'Digite o tamanho da referência');draw()}
+ c.onclick=e=>{const r=c.getBoundingClientRect();if(pts.length>=4)pts=pts.slice(0,2);
+  if(!refCm()&&pts.length<2){msg('Digite o tamanho da referência');return}
+  pts.push({x:e.clientX-r.left,y:e.clientY-r.top});
+  if(pts.length===2){scale=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)/refCm();msg('Agora toque no PONTO DE PARTIDA do objeto')}
+  else if(pts.length===3)msg('Toque no PONTO FINAL');
+  else if(pts.length===4){const d=Math.hypot(pts[3].x-pts[2].x,pts[3].y-pts[2].y)/scale;last=d;
+   $('#out').textContent=d>=100?(d/100).toFixed(2).replace('.',',')+' m':d.toFixed(1).replace('.',',')+' cm';msg('Pronto! Toque de novo para medir outro trecho')}
+  draw()};
+ $('#rst').onclick=reset;
+ $('#sv').onclick=()=>{if(last){H.add('Medida',sel.value.split(' (')[0],$('#out').textContent);msg('Salvo no histórico ✓')}};
+ navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
+  .then(s=>{stream=s;v.srcObject=s;reset()}).catch(()=>msg('Sem acesso à câmera. Permita a câmera no navegador e abra o app em página própria.')):msg('Câmera não disponível neste navegador.');
+}
+function stopCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+
+/* ---------- Conversor de unidades ---------- */
+const U={Comprimento:{base:'m',u:{'Milímetro':.001,'Centímetro':.01,'Metro':1,'Quilômetro':1000,'Polegada':.0254,'Pé':.3048,'Jarda':.9144,'Milha':1609.344}},
+Massa:{u:{'Grama':.001,'Quilograma':1,'Tonelada':1000,'Onça':.0283495,'Libra':.45359237}},
+Volume:{u:{'Mililitro':.001,'Litro':1,'Metro cúbico':1000,'Galão (US)':3.78541,'Copo (240 ml)':.24}},
+Área:{u:{'cm²':.0001,'m²':1,'km²':1e6,'Hectare':1e4,'Acre':4046.856,'Pé²':.092903}},
+Velocidade:{u:{'km/h':1/3.6,'m/s':1,'mph':.44704,'Nó':.514444}},
+Temperatura:{u:{'Celsius':0,'Fahrenheit':0,'Kelvin':0}}};
+function conv(){
+ const cats=Object.keys(U);
+ $('#main').innerHTML=`<div class="card glass"><label>Categoria</label><select id="cat">${cats.map(c=>`<option>${c}</option>`).join('')}</select></div>
+ <div class="card glass"><label>Valor</label><input id="val" type="number" inputmode="decimal" value="1">
+ <div class="row" style="margin-top:12px"><div><label>De</label><select id="a"></select></div><div><label>Para</label><select id="b"></select></div></div>
+ <div class="big" id="o"></div><button class="btn ghost" id="s">${ic('save')}Salvar no histórico</button></div>`;
+ const fill=()=>{const n=Object.keys(U[$('#cat').value].u).map(k=>`<option>${k}</option>`).join('');$('#a').innerHTML=n;$('#b').innerHTML=n;$('#b').selectedIndex=1;run()};
+ const run=()=>{const c=$('#cat').value,x=parseFloat($('#val').value),a=$('#a').value,b=$('#b').value;let r;
+  if(isNaN(x)){$('#o').textContent='—';return}
+  if(c==='Temperatura'){let k=a==='Celsius'?x+273.15:a==='Fahrenheit'?(x-32)*5/9+273.15:x;r=b==='Celsius'?k-273.15:b==='Fahrenheit'?(k-273.15)*9/5+32:k}
+  else r=x*U[c].u[a]/U[c].u[b];
+  $('#o').textContent=(+r.toPrecision(8)).toLocaleString('pt-BR',{maximumFractionDigits:8})+' '+b};
+ $('#cat').onchange=fill;['val','a','b'].forEach(i=>$('#'+i).oninput=run);
+ $('#s').onclick=()=>{H.add('Unidade',$('#val').value+' '+$('#a').value,$('#o').textContent)};fill();
+}
+
+/* ---------- Moedas (taxas de referência offline, aprox. por 1 USD) ---------- */
+const FX={USD:[1,'Dólar americano'],EUR:[.92,'Euro'],BRL:[5.4,'Real brasileiro'],GBP:[.78,'Libra esterlina'],JPY:[150,'Iene japonês'],CNY:[7.2,'Yuan chinês'],CAD:[1.37,'Dólar canadense'],AUD:[1.52,'Dólar australiano'],CHF:[.88,'Franco suíço'],MXN:[18,'Peso mexicano'],ARS:[1000,'Peso argentino'],CLP:[940,'Peso chileno'],COP:[4100,'Peso colombiano'],PEN:[3.75,'Sol peruano'],UYU:[40,'Peso uruguaio'],PYG:[7500,'Guarani paraguaio'],BOB:[6.9,'Boliviano'],INR:[84,'Rupia indiana'],KRW:[1350,'Won sul-coreano'],RUB:[92,'Rublo russo'],TRY:[34,'Lira turca'],ZAR:[18,'Rand sul-africano'],AED:[3.67,'Dirham dos EAU'],SAR:[3.75,'Riyal saudita'],SEK:[10.5,'Coroa sueca'],NOK:[10.7,'Coroa norueguesa'],DKK:[6.9,'Coroa dinamarquesa'],PLN:[4,'Zloty polonês'],CZK:[23,'Coroa tcheca'],HUF:[365,'Florim húngaro'],NZD:[1.65,'Dólar neozelandês'],SGD:[1.33,'Dólar de Singapura'],HKD:[7.8,'Dólar de Hong Kong'],THB:[34,'Baht tailandês'],IDR:[15800,'Rupia indonésia'],MYR:[4.5,'Ringgit malaio'],PHP:[57,'Peso filipino'],VND:[25000,'Dong vietnamita'],EGP:[48,'Libra egípcia'],NGN:[1600,'Naira nigeriano'],ILS:[3.7,'Shekel israelense'],UAH:[41,'Hryvnia ucraniana'],KWD:[.31,'Dinar kuwaitiano']};
+function moeda(){
+ const o=Object.keys(FX).map(k=>`<option value="${k}">${k} — ${FX[k][1]}</option>`).join('');
+ $('#main').innerHTML=`<div class="card glass"><label>Valor</label><input id="v" type="number" inputmode="decimal" value="100">
+ <div style="margin-top:12px"><label>De</label><select id="a">${o}</select></div>
+ <div style="margin-top:12px"><label>Para</label><select id="b">${o}</select></div>
+ <div class="big" id="o"></div><button class="btn ghost" id="s">${ic('save')}Salvar no histórico</button></div>
+ <p class="mute">${ic('info')} Taxas aproximadas de referência, embutidas no app para funcionar sem cadastro e sem internet. Não use para operações financeiras reais.</p>`;
+ $('#a').value='USD';$('#b').value='BRL';
+ const run=()=>{const x=parseFloat($('#v').value),a=$('#a').value,b=$('#b').value;if(isNaN(x)){$('#o').textContent='—';return}
+  $('#o').textContent=(x/FX[a][0]*FX[b][0]).toLocaleString('pt-BR',{maximumFractionDigits:2})+' '+b};
+ ['v','a','b'].forEach(i=>$('#'+i).oninput=run);
+ $('#s').onclick=()=>H.add('Moeda',$('#v').value+' '+$('#a').value,$('#o').textContent);run();
+}
+
+/* ---------- Histórico ---------- */
+function hist(){
+ const l=H.get();
+ $('#main').innerHTML=`<div class="card glass">${l.length?l.map(i=>`<div class="hi"><div><small>${i.t} · ${i.d}</small>${i.a}</div><b>${i.b}</b></div>`).join(''):'<p class="mute">Nada por aqui ainda. Suas contas, medidas e conversões ficam salvas somente neste aparelho.</p>'}</div>
+ ${l.length?`<button class="btn ghost" id="cl">${ic('trash-2')}Limpar histórico</button>`:''}`;
+ const c=$('#cl');if(c)c.onclick=()=>{H.clear();hist();icons()};
+}
+go('calc');
+</script>
+</body>
+</html>
