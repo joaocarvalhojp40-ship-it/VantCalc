@@ -24,9 +24,10 @@ jobs:
           mkdir www
           cp "$HTML" www/index.html
           echo '{"name":"vantcalc","version":"1.0.0"}' > package.json
-          npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 lucide@0.263.1
-          cp node_modules/lucide/dist/umd/lucide.min.js www/lucide.min.js
-          sed -i 's#https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js#lucide.min.js#' www/index.html
+          npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm i lucide || true
+          L=$(find node_modules/lucide -name 'lucide.min.js' 2>/dev/null | head -n 1)
+          if [ -n "$L" ]; then cp "$L" www/lucide.min.js; sed -i -E 's#https://cdn.jsdelivr.net/npm/lucide@[^"]*#lucide.min.js#' www/index.html; fi
           npx cap init VantCalc com.vantcalc.app --web-dir=www
           npx cap add android
           npx cap sync android
